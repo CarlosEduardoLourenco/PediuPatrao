@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Home</title>
+</head>
+<body>
+
+<div class="container-fluid vh-100 d-flex justify-content-center align-items-center" th:fragment="content">
+    <div class="text-center">
+        <h1>Bem-vindo!!!</h1>
+        <a href="/horarios" class="badge fs-6 text-decoration-none mb-3"
+           th:classappend="${situacao.aberto()} ? 'bg-success' : 'bg-secondary'"
+           th:text="${situacao.mensagem()}"></a>
+        <div>
+            <img th:src="@{/images/logo.png}" alt="Logo" width="500" height="500">
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

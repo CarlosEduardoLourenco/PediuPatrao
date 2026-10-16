@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Funcionários</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-person-walking me-2 text-primary"></i>Funcionários
+        </h2>
+        <a href="/funcionarios/novo" class="btn btn-primary" sec:authorize="hasRole('GERENTE')">
+            <i class="bi bi-plus-lg me-1"></i> Novo Funcionário
+        </a>
+    </div>
+
+    <div class="alert alert-success alert-dismissible fade show" th:if="${sucesso}" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        <span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div class="alert alert-danger alert-dismissible fade show" th:if="${erro}" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">Nome</th>
+                        <th>Cargo</th>
+                        <th>Telefone</th>
+                        <th>Situação</th>
+                        <th class="text-end pe-4" sec:authorize="hasRole('GERENTE')">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(funcionarios)}">
+                        <td colspan="5" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            Nenhum funcionário cadastrado.
+                        </td>
+                    </tr>
+                    <tr th:each="funcionario : ${funcionarios}">
+                        <td class="ps-4" th:text="${funcionario.nome}"></td>
+                        <td th:text="${funcionario.cargo}"></td>
+                        <td th:text="${funcionario.telefone ?: '—'}"></td>
+                        <td>
+                            <span class="badge"
+                                  th:classappend="${funcionario.ativo != false} ? 'bg-success' : 'bg-secondary'"
+                                  th:text="${funcionario.ativo != false} ? 'Ativo' : 'Inativo'"></span>
+                        </td>
+                        <td class="text-end pe-4 text-nowrap" sec:authorize="hasRole('GERENTE')">
+                            <a th:href="@{/funcionarios/editar/{id}(id=${funcionario.id})}"
+                               class="btn btn-sm btn-outline-primary me-1">
+                                <i class="bi bi-pencil-fill"></i> Editar
+                            </a>
+                            <form th:action="@{/funcionarios/alternar/{id}(id=${funcionario.id})}" method="post"
+                                  class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                        th:text="${funcionario.ativo != false} ? 'Inativar' : 'Ativar'"></button>
+                            </form>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

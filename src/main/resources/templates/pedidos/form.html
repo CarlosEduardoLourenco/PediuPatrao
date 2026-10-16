@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Novo Pedido</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/pedidos" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h2 class="fw-bold mb-0">Novo Pedido</h2>
+    </div>
+
+    <div id="mensagemAcao" class="alert alert-danger d-none" role="alert"></div>
+
+    <div class="card shadow-sm" style="max-width: 860px;">
+        <div class="card-body p-4">
+
+            <div class="row g-3 mb-4">
+                <div class="col-md-8">
+                    <label for="cliente" class="form-label fw-medium">Cliente</label>
+                    <select id="cliente" class="form-select" required>
+                        <option value="" selected disabled>Selecione o cliente</option>
+                        <option th:each="cliente : ${clientes}" th:value="${cliente.id}" th:text="${cliente.nome}"></option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="tipoSaida" class="form-label fw-medium">Saída</label>
+                    <select id="tipoSaida" class="form-select" required>
+                        <option th:each="tipo : ${tiposSaida}" th:value="${tipo}" th:text="${tipo}"></option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <p class="fw-medium mb-0"><i class="bi bi-list-ul me-1"></i>Itens</p>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="adicionarItem">
+                    <i class="bi bi-plus-lg"></i> Adicionar item
+                </button>
+            </div>
+
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Produto</th>
+                        <th style="width: 120px;">Quantidade</th>
+                        <th class="text-end" style="width: 140px;">Subtotal</th>
+                        <th style="width: 50px;"></th>
+                    </tr>
+                </thead>
+                <tbody id="itens"></tbody>
+            </table>
+
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted small">
+                    O valor final é calculado pelo servidor a partir dos preços cadastrados.
+                </div>
+                <div class="fs-5">Total estimado: <strong id="totalEstimado">R$ 0,00</strong></div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="button" class="btn btn-primary" id="registrarPedido">
+                    <i class="bi bi-check-lg me-1"></i>Registrar pedido
+                </button>
+                <a href="/pedidos" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </div>
+    </div>
+
+    <template id="modeloItem">
+        <tr>
+            <td>
+                <select class="form-select produto">
+                    <option value="" selected disabled>Selecione o produto</option>
+                    <option th:each="produto : ${produtos}" th:value="${produto.id}"
+                            th:attr="data-preco=${produto.preco}"
+                            th:text="${produto.nome} + ' — R$ ' + ${#numbers.formatDecimal(produto.preco, 1, 'POINT', 2, 'COMMA')}">
+                    </option>
+                </select>
+            </td>
+            <td><input type="number" class="form-control quantidade" min="1" value="1"></td>
+            <td class="text-end subtotal">R$ 0,00</td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-danger remover"><i class="bi bi-x-lg"></i></button>
+            </td>
+        </tr>
+    </template>
+
+    <script>
+        const corpoDosItens = document.getElementById('itens');
+        const modeloDeItem = document.getElementById('modeloItem');
+
+        function formatarMoeda(valor) {
+            return 'R$ ' + valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function subtotalDaLinha(linha) {
+            const opcao = linha.querySelector('.produto').selectedOptions[0];
+            const preco = Number(opcao?.dataset.preco ?? 0);
+            const quantidade = Number(linha.querySelector('.quantidade').value) || 0;
+            return preco * quantidade;
+        }
+
+        function recalcularTotais() {
+            let total = 0;
+            corpoDosItens.querySelectorAll('tr').forEach(linha => {
+                const subtotal = subtotalDaLinha(linha);
+                linha.querySelector('.subtotal').textContent = formatarMoeda(subtotal);
+                total += subtotal;
+            });
+            document.getElementById('totalEstimado').textContent = formatarMoeda(total);
+        }
+
+        function adicionarLinha() {
+            const linha = modeloDeItem.content.firstElementChild.cloneNode(true);
+            linha.querySelector('.produto').addEventListener('change', recalcularTotais);
+            linha.querySelector('.quantidade').addEventListener('input', recalcularTotais);
+            linha.querySelector('.remover').addEventListener('click', () => {
+                linha.remove();
+                recalcularTotais();
+            });
+            corpoDosItens.appendChild(linha);
+        }
+
+        function coletarItens() {
+            return Array.from(corpoDosItens.querySelectorAll('tr'))
+                .map(linha => ({
+                    produtoId: linha.querySelector('.produto').value,
+                    quantidade: Number(linha.querySelector('.quantidade').value)
+                }))
+                .filter(item => item.produtoId !== '');
+        }
+
+        async function registrarPedido() {
+            const corpo = {
+                clienteId: document.getElementById('cliente').value,
+                tipoSaida: document.getElementById('tipoSaida').value,
+                itens: coletarItens()
+            };
+            try {
+                const pedido = await enviarJson('/api/pedidos', corpo);
+                window.location.href = '/pedidos/' + pedido.id;
+            } catch (erro) {
+                exibirErro(erro.message);
+            }
+        }
+
+        document.getElementById('adicionarItem').addEventListener('click', adicionarLinha);
+        document.getElementById('registrarPedido').addEventListener('click', registrarPedido);
+        adicionarLinha();
+    </script>
+
+</div>
+
+</body>
+</html>

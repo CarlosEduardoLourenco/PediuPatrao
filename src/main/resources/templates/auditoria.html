@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Auditoria</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-shield-check me-2 text-primary"></i>Auditoria
+        </h2>
+    </div>
+
+    <form method="get" th:action="@{/auditoria}" class="card card-body shadow-sm mb-4">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-2">
+                <label for="entidade" class="form-label">Entidade</label>
+                <select id="entidade" name="entidade" class="form-select">
+                    <option value="">Todas</option>
+                    <option th:each="opcao : ${entidades}" th:value="${opcao}" th:text="${opcao}"
+                            th:selected="${filtro.entidade() == opcao}"></option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="entidadeId" class="form-label">Identificador</label>
+                <input type="text" id="entidadeId" name="entidadeId" class="form-control"
+                       th:value="${filtro.entidadeId()}">
+            </div>
+            <div class="col-md-2">
+                <label for="usuario" class="form-label">Usuário</label>
+                <input type="text" id="usuario" name="usuario" class="form-control"
+                       th:value="${filtro.usuario()}">
+            </div>
+            <div class="col-md-2">
+                <label for="de" class="form-label">De</label>
+                <input type="date" id="de" name="de" class="form-control" th:value="${filtro.de()}">
+            </div>
+            <div class="col-md-2">
+                <label for="ate" class="form-label">Até</label>
+                <input type="date" id="ate" name="ate" class="form-control" th:value="${filtro.ate()}">
+            </div>
+            <div class="col-md-1 d-grid">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">Data e hora</th>
+                        <th>Usuário</th>
+                        <th>Operação</th>
+                        <th>Entidade</th>
+                        <th>Alterações</th>
+                        <th>Justificativa</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${registros.empty}">
+                        <td colspan="6" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            Nenhum registro de auditoria encontrado.
+                        </td>
+                    </tr>
+                    <tr th:each="registro : ${registros.content}">
+                        <td class="ps-4 text-nowrap"
+                            th:text="${#temporals.format(registro.dataHora(), 'dd/MM/yyyy — HH:mm')}"></td>
+                        <td>
+                            <div th:text="${registro.usuario()}"></div>
+                            <span class="badge bg-secondary" th:text="${registro.perfil()}"></span>
+                        </td>
+                        <td th:text="${registro.operacao()}"></td>
+                        <td>
+                            <div th:text="${registro.entidade()}"></div>
+                            <div class="small text-muted" th:text="${registro.entidadeId()}"></div>
+                        </td>
+                        <td>
+                            <div th:each="alteracao : ${registro.alteracoes()}">
+                                <strong th:text="${alteracao.campo()}"></strong>:
+                                <span class="text-muted" th:text="${alteracao.valorAnterior() ?: '—'}"></span>
+                                &rarr;
+                                <span th:text="${alteracao.valorNovo() ?: '—'}"></span>
+                            </div>
+                        </td>
+                        <td th:text="${registro.justificativa() ?: '—'}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer d-flex justify-content-between align-items-center small text-muted"
+             th:unless="${registros.empty}">
+            <span>
+                Página <strong th:text="${registros.number + 1}"></strong>
+                de <strong th:text="${registros.totalPages}"></strong>
+                (<span th:text="${registros.totalElements}"></span> registros)
+            </span>
+            <span class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-secondary" th:if="${registros.hasPrevious()}"
+                   th:href="@{/auditoria(entidade=${filtro.entidade()}, entidadeId=${filtro.entidadeId()}, usuario=${filtro.usuario()}, de=${filtro.de()}, ate=${filtro.ate()}, pagina=${registros.number - 1})}">
+                    Anterior
+                </a>
+                <a class="btn btn-sm btn-outline-secondary" th:if="${registros.hasNext()}"
+                   th:href="@{/auditoria(entidade=${filtro.entidade()}, entidadeId=${filtro.entidadeId()}, usuario=${filtro.usuario()}, de=${filtro.de()}, ate=${filtro.ate()}, pagina=${registros.number + 1})}">
+                    Próxima
+                </a>
+            </span>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

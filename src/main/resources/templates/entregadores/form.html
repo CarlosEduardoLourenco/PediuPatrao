@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Entregador</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/entregadores" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h2 class="fw-bold mb-0">
+            <span th:text="${entregador.id != null} ? 'Editar Entregador' : 'Novo Entregador'"></span>
+        </h2>
+    </div>
+
+    <div class="alert alert-danger alert-dismissible fade show" th:if="${erro}" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="card shadow-sm" style="max-width: 540px;">
+        <div class="card-body p-4">
+            <form th:action="${entregador.id != null}
+                        ? @{/entregadores/editar/{id}(id=${entregador.id})}
+                        : @{/entregadores/salvar}"
+                  th:object="${entregador}"
+                  method="post">
+
+                <div class="mb-3">
+                    <label for="nome" class="form-label fw-medium">Nome</label>
+                    <input type="text" id="nome" class="form-control" th:field="*{nome}" required/>
+                </div>
+
+                <div class="mb-3">
+                    <label for="telefone" class="form-label fw-medium">Telefone</label>
+                    <input type="text" id="telefone" class="form-control" th:field="*{telefone}"
+                           placeholder="Ex: (11) 99999-9999" required/>
+                </div>
+
+                <div class="mb-3">
+                    <label for="veiculo" class="form-label fw-medium">Veículo</label>
+                    <input type="text" id="veiculo" class="form-control" th:field="*{veiculo}"
+                           placeholder="Ex: Moto CG 160 — ABC1D23"/>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input type="checkbox" id="ativo" class="form-check-input" th:field="*{ativo}"/>
+                    <label for="ativo" class="form-check-label">Entregador ativo</label>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>
+                        <span th:text="${entregador.id != null} ? 'Salvar Alterações' : 'Cadastrar'"></span>
+                    </button>
+                    <a href="/entregadores" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

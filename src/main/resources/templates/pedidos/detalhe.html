@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Detalhe do Pedido</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/pedidos" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h2 class="fw-bold mb-0">Pedido</h2>
+        <span class="badge fs-6"
+              th:classappend="${pedido.status.name() == 'FINALIZADO'} ? 'bg-success' :
+                              (${pedido.status.name() == 'CANCELADO'} ? 'bg-danger' :
+                              (${pedido.status.name() == 'EM_PREPARACAO'} ? 'bg-warning text-dark' :
+                              (${pedido.status.name() == 'PRONTO'} ? 'bg-info text-dark' : 'bg-secondary')))"
+              th:text="${pedido.status}"></span>
+    </div>
+
+    <div id="mensagemAcao" class="alert alert-danger d-none" role="alert"></div>
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Itens</h5>
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th class="text-end">Preço</th>
+                                <th class="text-end">Qtd.</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="item : ${pedido.itens}">
+                                <td th:text="${item.nomeProduto()}"></td>
+                                <td class="text-end"
+                                    th:text="'R$ ' + ${#numbers.formatDecimal(item.precoUnitario(), 1, 'POINT', 2, 'COMMA')}"></td>
+                                <td class="text-end" th:text="${item.quantidade()}"></td>
+                                <td class="text-end"
+                                    th:text="'R$ ' + ${#numbers.formatDecimal(item.subtotal(), 1, 'POINT', 2, 'COMMA')}"></td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="text-end">Subtotal</td>
+                                <td class="text-end"
+                                    th:text="'R$ ' + ${#numbers.formatDecimal(pedido.subtotal, 1, 'POINT', 2, 'COMMA')}"></td>
+                            </tr>
+                            <tr th:if="${pedido.valorDesconto.signum() > 0}">
+                                <td colspan="3" class="text-end text-success"
+                                    th:text="'Desconto (' + ${pedido.descontoPercentual} + '%)'"></td>
+                                <td class="text-end text-success"
+                                    th:text="'- R$ ' + ${#numbers.formatDecimal(pedido.valorDesconto, 1, 'POINT', 2, 'COMMA')}"></td>
+                            </tr>
+                            <tr class="fw-bold">
+                                <td colspan="3" class="text-end">Total</td>
+                                <td class="text-end"
+                                    th:text="'R$ ' + ${#numbers.formatDecimal(pedido.valorTotal, 1, 'POINT', 2, 'COMMA')}"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Informações</h5>
+                    <dl class="mb-0">
+                        <dt>Cliente</dt>
+                        <dd th:text="${pedido.clienteNome}"></dd>
+                        <dt>Saída</dt>
+                        <dd th:text="${pedido.tipoSaida}"></dd>
+                        <dt>Entrada</dt>
+                        <dd>
+                            <span th:text="${#temporals.format(pedido.dataHoraEntrada, 'dd/MM/yyyy — HH:mm')}"></span>
+                            por <strong th:text="${pedido.usuarioEntrada}"></strong>
+                        </dd>
+                        <th:block th:if="${pedido.saida != null}">
+                            <dt>Saída registrada</dt>
+                            <dd>
+                                <span th:text="${#temporals.format(pedido.saida.dataHora(), 'dd/MM/yyyy — HH:mm')}"></span>
+                                por <strong th:text="${pedido.saida.usuario()}"></strong>
+                                <div th:if="${pedido.saida.possuiEntregador()}">
+                                    Entregador: <strong th:text="${pedido.saida.entregadorNome()}"></strong>
+                                </div>
+                            </dd>
+                        </th:block>
+                        <th:block th:if="${pedido.cancelamento != null}">
+                            <dt class="text-danger">Cancelamento</dt>
+                            <dd>
+                                <div th:text="${pedido.cancelamento.justificativa()}"></div>
+                                <span th:text="${#temporals.format(pedido.cancelamento.dataHora(), 'dd/MM/yyyy — HH:mm')}"></span>
+                                por <strong th:text="${pedido.cancelamento.usuario()}"></strong>
+                            </dd>
+                        </th:block>
+                    </dl>
+                </div>
+            </div>
+
+            <div class="card shadow-sm" th:if="${!pedido.status.ehFinal()}">
+                <div class="card-body d-grid gap-2">
+                    <h5 class="card-title">Ações</h5>
+                    <div sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')"
+                         th:if="${proximoStatus != null and proximoStatus.name() == 'SAIU_PARA_ENTREGA'}">
+                        <label for="entregador" class="form-label">Entregador responsável</label>
+                        <select id="entregador" class="form-select">
+                            <option value="" selected disabled>Selecione o entregador</option>
+                            <option th:each="entregador : ${entregadores}" th:value="${entregador.id}"
+                                    th:text="${entregador.nome}"></option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-primary" id="avancarPedido"
+                            sec:authorize="hasAnyRole('GERENTE', 'ATENDENTE')"
+                            th:if="${proximoStatus != null}"
+                            th:text="'Avançar para ' + ${proximoStatus}"></button>
+                    <th:block th:if="${pedido.status.antesDaSaida()}" sec:authorize="hasRole('GERENTE')">
+                        <button type="button" class="btn btn-outline-success" data-bs-toggle="modal"
+                                data-bs-target="#modalDesconto">Aplicar desconto</button>
+                        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
+                                data-bs-target="#modalCancelamento">Cancelar pedido</button>
+                    </th:block>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalDesconto" tabindex="-1" aria-hidden="true" sec:authorize="hasRole('GERENTE')">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Aplicar desconto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="percentualDesconto" class="form-label">Percentual (0 a 20%)</label>
+                    <input type="number" id="percentualDesconto" class="form-control" min="0" max="20" step="0.01"
+                           th:value="${pedido.descontoPercentual}">
+                    <div class="form-text">Incide sobre o subtotal. Informe 0 para remover o desconto.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-success" id="confirmarDesconto">Aplicar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalCancelamento" tabindex="-1" aria-hidden="true" sec:authorize="hasRole('GERENTE')">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cancelar pedido</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="motivoCancelamento" class="form-label">Motivo</label>
+                    <select id="motivoCancelamento" class="form-select">
+                        <option value="" selected disabled>Selecione o motivo</option>
+                        <option th:each="motivo : ${motivos}" th:value="${motivo}"
+                                th:text="${motivo.descricao}" th:attr="data-exige-observacao=${motivo.exigeObservacao()}">
+                        </option>
+                    </select>
+                    <div class="mt-3 d-none" id="grupoObservacao">
+                        <label for="observacaoCancelamento" class="form-label">Descreva o motivo (mínimo de 10 caracteres)</label>
+                        <textarea id="observacaoCancelamento" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="form-text mt-2">
+                        O cancelamento só é possível antes da saída e não pode ser desfeito.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Voltar</button>
+                    <button type="button" class="btn btn-danger" id="confirmarCancelamento">Cancelar pedido</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        const identificadorDoPedido = [[${pedido.id}]];
+
+        async function executarAcao(acao, corpo) {
+            try {
+                await enviarJson('/api/pedidos/' + identificadorDoPedido + '/' + acao, corpo);
+                window.location.reload();
+            } catch (erro) {
+                bootstrap.Modal.getInstance(document.querySelector('.modal.show'))?.hide();
+                exibirErro(erro.message);
+            }
+        }
+
+        document.getElementById('avancarPedido')?.addEventListener('click', () => {
+            const seletorDeEntregador = document.getElementById('entregador');
+            if (seletorDeEntregador && !seletorDeEntregador.value) {
+                exibirErro('Selecione o entregador responsável pela entrega.');
+                return;
+            }
+            executarAcao('avancar', seletorDeEntregador ? { entregadorId: seletorDeEntregador.value } : {});
+        });
+
+        document.getElementById('confirmarDesconto')?.addEventListener('click', () => {
+            const percentual = Number(document.getElementById('percentualDesconto').value);
+            executarAcao('desconto', { percentual });
+        });
+
+        document.getElementById('motivoCancelamento')?.addEventListener('change', evento => {
+            const opcao = evento.target.selectedOptions[0];
+            const exigeObservacao = opcao.dataset.exigeObservacao === 'true';
+            document.getElementById('grupoObservacao').classList.toggle('d-none', !exigeObservacao);
+        });
+
+        document.getElementById('confirmarCancelamento')?.addEventListener('click', () => {
+            const motivo = document.getElementById('motivoCancelamento').value;
+            const observacao = document.getElementById('observacaoCancelamento').value;
+            if (!motivo) {
+                exibirErro('Selecione o motivo do cancelamento.');
+                return;
+            }
+            executarAcao('cancelar', { motivo, observacao });
+        });
+    </script>
+
+</div>
+
+</body>
+</html>
