@@ -100,6 +100,25 @@ Exemplo de registro (alteração de cliente):
 | Novo valor | Av. Brasil |
 | Data e hora | 23/09/2026 — 14:35 |
 
+## Principais alterações realizadas
+
+Comparação com a situação inicial descrita no enunciado:
+
+| Componente | Situação inicial | O que foi feito |
+|---|---|---|
+| Usuários | Perfis ADMIN e USER; a autenticação atribuía sempre a role USER | Três perfis reais (ADMIN, GERENTE, ATENDENTE) gravados no banco e usados na autenticação; atribuição de perfil restrita ao ADMIN, com proteção contra autoelevação; a senha não é mais devolvida pela API |
+| Pedidos | Criação, listagem e troca de status livre | Itens, quantidades e preços copiados do cadastro; total calculado no servidor; responsável e data/hora de entrada; fluxo de status com transições validadas |
+| Clientes | Cadastro, consulta, alteração e exclusão | Cadastro e alteração pelo ATENDENTE, consulta pelo GERENTE; a exclusão deu lugar à inativação com retenção de 1 ano e termo de uso; todas as alterações são auditadas |
+| Descontos | Não implementado | Desconto percentual de até 20%, exclusivo do GERENTE e só antes da saída |
+| Entrada e saída | Sem controle de horários e transições | Registro de data/hora e responsável na entrada e na saída (com o entregador, na entrega); transições inválidas e alterações após o cancelamento bloqueadas |
+| Cancelamento | Não existia | Exclusivo do GERENTE, antes da saída, com motivo obrigatório e dados históricos preservados |
+| Auditoria | Não implementada | Entidade, repositório e serviço próprios, coleção só de inserção, consulta restrita a ADMIN e GERENTE |
+| Autorização | Sem diferenciação por perfil; CSRF desativado | Regras por rota em `SecurityConfig` (o que não está listado é negado), `@PreAuthorize` nos serviços, CSRF ligado, respostas 401 e 403 tratadas e acessos negados registrados em log |
+| Organização | Um único `HomeController` para todas as telas | Controllers separados por assunto, DTOs de requisição, exceções de negócio com tratador único e telas de pedido, auditoria e cadastros |
+| Testes | Nenhum | 303 testes automatizados (unitários e de integração) |
+
+Foram preservados: a arquitetura em camadas, as tecnologias (Java, Spring Boot, Spring Security, Thymeleaf e MongoDB), o tema AdminLTE, o layout com sidebar, a consulta de CEP pelo ViaCEP e o cadastro de usuários e de clientes.
+
 ### Cadastros que estavam incompletos no projeto original
 O projeto recebido já exibia na sidebar os itens **Funcionários**, **Entregadores** e **Horário de Funcionamento** (e criava a coleção `horariosAtendimento`), mas sem telas nem regras. Foram concluídos, mantendo a arquitetura em camadas:
 
@@ -170,5 +189,9 @@ Logado como `atendente01`, o resultado é `403`; como `gerente01`, `200`. Sem lo
 
 ## Testes
 
-A suíte automatizada cobre: transições de status, cálculo de valores e limites de desconto, cancelamento, regras de usuários (autoelevação, último ADMIN), matriz perfil × rota (200, 401 e 403), CSRF, auditoria (campos, perfil, máscara, imutabilidade e filtros), renderização das telas por perfil e o ciclo de vida do cliente.
+A suíte automatizada cobre: transições de status, cálculo de valores e limites de desconto, cancelamento, regras de usuários (autoelevação, último ADMIN), matriz perfil × rota (200, 401 e 403), CSRF, auditoria (campos, valores anterior e novo, perfil, imutabilidade e filtros), renderização das telas por perfil, o ciclo de vida do cliente e os cadastros de funcionários, entregadores e horários.
+
+## Vídeo de demonstração
+
+O vídeo mostra: autenticação dos três perfis; bloqueio de operações não autorizadas (inclusive chamadas diretas à API); entrada, transições e saída de pedidos; cancelamento e desconto pelo GERENTE; e a consulta aos registros de auditoria resultantes.
 
