@@ -9,6 +9,8 @@ Sistema de gestão de uma pizzaria (clientes, produtos, pedidos, entregas e audi
 
 **Tecnologias:** Java 21, Spring Boot 3.4.4, Spring Security 6, Thymeleaf, MongoDB e Chart.js 2.9.4.
 
+**Vídeo do Dashboard Administrativo:** [VideoPediuPatraoM2.mp4](docs/video/VideoPediuPatraoM2.mp4) (2:59)
+
 ---
 
 ## Como executar
@@ -502,7 +504,7 @@ Commits da `feature/dashboard`:
 
 ### Vídeo de apresentação
 
-Link: *(a incluir)*
+O vídeo (2:59) demonstra o painel funcionando e justifica as principais decisões de análise e projeto: [docs/video/VideoPediuPatraoM2.mp4](docs/video/VideoPediuPatraoM2.mp4)
 
 ---
 
