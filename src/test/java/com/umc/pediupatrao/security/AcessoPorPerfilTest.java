@@ -71,6 +71,9 @@ class AcessoPorPerfilTest {
         "ADMIN, GET, /funcionarios/novo",
         "ATENDENTE, GET, /entregadores/novo",
         "ATENDENTE, POST, /funcionarios/salvar",
+        "ADMIN, GET, /api/painel/indicadores",
+        "ATENDENTE, GET, /api/painel/filtros",
+        "GERENTE, POST, /api/painel/indicadores",
         "ATENDENTE, GET, /rota-inexistente"
     })
     void deveNegarAcessoSemPermissao(String perfil, String metodo, String caminho) throws Exception {
@@ -113,7 +116,8 @@ class AcessoPorPerfilTest {
         "GERENTE, GET, /horarios, 200",
         "ATENDENTE, GET, /api/horarios/situacao, 200",
         "GERENTE, GET, /funcionarios/novo, 200",
-        "GERENTE, GET, /entregadores/novo, 200"
+        "GERENTE, GET, /entregadores/novo, 200",
+        "GERENTE, GET, /api/painel/filtros, 200"
     })
     void deveLiberarAcessoComPermissao(String perfil, String metodo, String caminho, int statusEsperado)
             throws Exception {
