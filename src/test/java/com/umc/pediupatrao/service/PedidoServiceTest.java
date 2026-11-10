@@ -15,6 +15,7 @@ import com.umc.pediupatrao.dto.ItemRequisicao;
 import com.umc.pediupatrao.dto.PedidoRequisicao;
 import com.umc.pediupatrao.entity.Cliente;
 import com.umc.pediupatrao.entity.Entregador;
+import com.umc.pediupatrao.entity.PassagemDeStatus;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.Produto;
 import com.umc.pediupatrao.entity.StatusPedido;
@@ -104,6 +105,63 @@ class PedidoServiceTest {
         assertEquals("atendente01", pedido.getUsuarioEntrada());
         assertEquals(LocalDateTime.of(2026, 9, 23, 14, 35), pedido.getDataHoraEntrada());
         assertNull(pedido.getSaida());
+    }
+
+    @Test
+    void deveIniciarOHistoricoComORecebimentoDoPedido() {
+        prepararClienteEProdutosValidos();
+        when(usuarioAutenticado.nome()).thenReturn("atendente01");
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        Pedido pedido = servico.criar(new PedidoRequisicao("c1", TipoSaida.RETIRADA,
+                List.of(new ItemRequisicao("p1", 1))));
+
+        assertEquals(List.of(new PassagemDeStatus(StatusPedido.RECEBIDO, LocalDateTime.of(2026, 9, 23, 14, 35),
+                "atendente01")), pedido.getHistoricoDeStatus());
+    }
+
+    @Test
+    void deveAcrescentarAPassagemAoAvancarSemPerderAsAnteriores() {
+        Pedido pedido = pedidoEm(StatusPedido.RECEBIDO, TipoSaida.ENTREGA);
+        pedido.setHistoricoDeStatus(List.of(new PassagemDeStatus(StatusPedido.RECEBIDO,
+                LocalDateTime.of(2026, 9, 23, 14, 0), "atendente01")));
+        when(pedidoRepository.findById("ped1")).thenReturn(Optional.of(pedido));
+        when(usuarioAutenticado.nome()).thenReturn("gerente01");
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        Pedido avancado = servico.avancar("ped1", AvancoRequisicao.semDestino());
+
+        assertEquals(2, avancado.getHistoricoDeStatus().size());
+        assertEquals(StatusPedido.RECEBIDO, avancado.getHistoricoDeStatus().get(0).status());
+        assertEquals(new PassagemDeStatus(StatusPedido.EM_PREPARACAO, LocalDateTime.of(2026, 9, 23, 14, 35),
+                "gerente01"), avancado.getHistoricoDeStatus().get(1));
+    }
+
+    @Test
+    void deveRegistrarSaidaEPassagemComOMesmoInstanteEResponsavel() {
+        Pedido pedido = pedidoEm(StatusPedido.PRONTO, TipoSaida.RETIRADA);
+        when(pedidoRepository.findById("ped1")).thenReturn(Optional.of(pedido));
+        when(usuarioAutenticado.nome()).thenReturn("atendente01");
+        when(pedidoRepository.save(any(Pedido.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        Pedido retirado = servico.avancar("ped1", AvancoRequisicao.semDestino());
+
+        PassagemDeStatus ultima = retirado.getHistoricoDeStatus().get(retirado.getHistoricoDeStatus().size() - 1);
+        assertEquals(StatusPedido.RETIRADO, ultima.status());
+        assertEquals(retirado.getSaida().dataHora(), ultima.dataHora());
+        assertEquals(retirado.getSaida().usuario(), ultima.responsavel());
+    }
+
+    @Test
+    void naoDeveAlterarOHistoricoQuandoATransicaoForRejeitada() {
+        Pedido pedido = pedidoEm(StatusPedido.FINALIZADO, TipoSaida.RETIRADA);
+        pedido.setHistoricoDeStatus(List.of(new PassagemDeStatus(StatusPedido.FINALIZADO,
+                LocalDateTime.of(2026, 9, 23, 13, 0), "atendente01")));
+        when(pedidoRepository.findById("ped1")).thenReturn(Optional.of(pedido));
+
+        assertThrows(RegraNegocioException.class,
+                () -> servico.avancar("ped1", AvancoRequisicao.semDestino()));
+        assertEquals(1, pedido.getHistoricoDeStatus().size());
     }
 
     @Test

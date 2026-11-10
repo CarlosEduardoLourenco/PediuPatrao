@@ -101,6 +101,18 @@
                                 por <strong th:text="${pedido.cancelamento.usuario()}"></strong>
                             </dd>
                         </th:block>
+                        <th:block th:unless="${pedido.historicoDeStatus.isEmpty()}">
+                            <dt>Histórico</dt>
+                            <dd>
+                                <ol class="list-unstyled mb-0" id="historicoDeStatus">
+                                    <li th:each="passagem : ${pedido.historicoDeStatus}">
+                                        <span class="badge bg-light text-dark border" th:text="${passagem.status()}"></span>
+                                        <span th:text="${#temporals.format(passagem.dataHora(), 'dd/MM/yyyy — HH:mm')}"></span>
+                                        por <strong th:text="${passagem.responsavel()}"></strong>
+                                    </li>
+                                </ol>
+                            </dd>
+                        </th:block>
                     </dl>
                 </div>
             </div>

@@ -156,6 +156,28 @@ class TelasDePedidoTest {
                 .andExpect(content().string(not(containsString("Novo Pedido"))));
     }
 
+    @Test
+    void deveExibirOHistoricoDeStatusNoDetalhe() throws Exception {
+        Pedido pedido = pedidoEm(StatusPedido.RECEBIDO);
+        pedido.passarPara(StatusPedido.EM_PREPARACAO, LocalDateTime.of(2026, 9, 23, 14, 50), "cozinha01");
+        String id = pedidoRepository.save(pedido).getId();
+
+        detalhe(id, "GERENTE")
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("historicoDeStatus")))
+                .andExpect(content().string(containsString("23/09/2026 — 14:50")))
+                .andExpect(content().string(containsString("cozinha01")));
+    }
+
+    @Test
+    void naoDeveExibirHistoricoParaPedidoSemPassagensRegistradas() throws Exception {
+        String id = pedidoEm(StatusPedido.RECEBIDO).getId();
+
+        detalhe(id, "GERENTE")
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("historicoDeStatus"))));
+    }
+
     private ResultActions detalhe(String id, String perfil) throws Exception {
         return mockMvc.perform(MockMvcRequestBuilders.get("/pedidos/" + id).with(user("teste").roles(perfil)));
     }
@@ -175,8 +197,8 @@ class TelasDePedidoTest {
         pedido.setClienteNome(cliente.getNome());
         pedido.setTipoSaida(TipoSaida.ENTREGA);
         pedido.setStatus(status);
-        pedido.setItens(List.of(new ItemPedido(ativo.getId(), "Pizza Visivel", new BigDecimal("40.00"), 1,
-                new BigDecimal("40.00"))));
+        pedido.setItens(List.of(new ItemPedido(ativo.getId(), "Pizza Visivel", "Pizza",
+                new BigDecimal("40.00"), 1, new BigDecimal("40.00"))));
         pedido.setSubtotal(new BigDecimal("40.00"));
         pedido.setDescontoPercentual(new BigDecimal("0.00"));
         pedido.setValorDesconto(new BigDecimal("0.00"));

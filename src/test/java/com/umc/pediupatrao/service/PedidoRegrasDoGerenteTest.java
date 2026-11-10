@@ -14,6 +14,7 @@ import com.umc.pediupatrao.dto.CancelamentoRequisicao;
 import com.umc.pediupatrao.dto.DescontoRequisicao;
 import com.umc.pediupatrao.entity.ItemPedido;
 import com.umc.pediupatrao.entity.MotivoCancelamento;
+import com.umc.pediupatrao.entity.PassagemDeStatus;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.entity.TipoSaida;
@@ -235,6 +236,23 @@ class PedidoRegrasDoGerenteTest {
         verify(pedidoRepository, never()).save(any());
     }
 
+    @Test
+    void deveRegistrarOCancelamentoNoHistoricoDeStatus() {
+        Pedido pedido = pedidoEm(StatusPedido.EM_PREPARACAO);
+        pedido.setHistoricoDeStatus(List.of(
+                new PassagemDeStatus(StatusPedido.RECEBIDO, LocalDateTime.of(2026, 9, 23, 14, 0), "atendente01"),
+                new PassagemDeStatus(StatusPedido.EM_PREPARACAO, LocalDateTime.of(2026, 9, 23, 14, 10),
+                        "atendente01")));
+        liberarPedido(pedido);
+
+        Pedido cancelado = servico.cancelar("ped1",
+                new CancelamentoRequisicao(MotivoCancelamento.DEMORA_NA_PREPARACAO, null));
+
+        assertEquals(3, cancelado.getHistoricoDeStatus().size());
+        assertEquals(new PassagemDeStatus(StatusPedido.CANCELADO, LocalDateTime.of(2026, 9, 23, 14, 35),
+                "gerente01"), cancelado.getHistoricoDeStatus().get(2));
+    }
+
     private void liberarPedido(Pedido pedido) {
         when(pedidoRepository.findById("ped1")).thenReturn(Optional.of(pedido));
     }
@@ -244,7 +262,8 @@ class PedidoRegrasDoGerenteTest {
         pedido.setId("ped1");
         pedido.setStatus(status);
         pedido.setTipoSaida(TipoSaida.ENTREGA);
-        pedido.setItens(List.of(new ItemPedido("p1", "Pizza", new BigDecimal("50.00"), 2, new BigDecimal("100.00"))));
+        pedido.setItens(List.of(new ItemPedido("p1", "Pizza", "Pizza", new BigDecimal("50.00"), 2,
+                new BigDecimal("100.00"))));
         pedido.setSubtotal(new BigDecimal("100.00"));
         pedido.setDescontoPercentual(new BigDecimal("0.00"));
         pedido.setValorDesconto(new BigDecimal("0.00"));

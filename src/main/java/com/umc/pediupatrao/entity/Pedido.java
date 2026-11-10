@@ -2,11 +2,15 @@ package com.umc.pediupatrao.entity;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "pedidos")
+@CompoundIndex(name = "status_por_entrada", def = "{'status': 1, 'dataHoraEntrada': 1}")
 public class Pedido {
 
     @Id
@@ -20,10 +24,27 @@ public class Pedido {
     private BigDecimal descontoPercentual;
     private BigDecimal valorDesconto;
     private BigDecimal valorTotal;
+    @Indexed(name = "entrada")
     private LocalDateTime dataHoraEntrada;
     private String usuarioEntrada;
     private RegistroDeSaida saida;
     private RegistroDeCancelamento cancelamento;
+    private List<PassagemDeStatus> historicoDeStatus;
+
+    public void passarPara(StatusPedido novoStatus, LocalDateTime dataHora, String responsavel) {
+        List<PassagemDeStatus> historicoAtualizado = new ArrayList<>(getHistoricoDeStatus());
+        historicoAtualizado.add(new PassagemDeStatus(novoStatus, dataHora, responsavel));
+        this.historicoDeStatus = historicoAtualizado;
+        this.status = novoStatus;
+    }
+
+    public List<PassagemDeStatus> getHistoricoDeStatus() {
+        return historicoDeStatus == null ? List.of() : historicoDeStatus;
+    }
+
+    public void setHistoricoDeStatus(List<PassagemDeStatus> historicoDeStatus) {
+        this.historicoDeStatus = historicoDeStatus;
+    }
 
     public RegistroDeCancelamento getCancelamento() {
         return cancelamento;

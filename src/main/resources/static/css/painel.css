@@ -1,0 +1,105 @@
+#painelDeVendas .bloco-do-painel {
+    position: relative;
+}
+
+#painelDeVendas .bloco-do-painel > .card-body {
+    position: relative;
+}
+
+#painelDeVendas .estado-do-bloco {
+    display: none;
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem;
+    text-align: center;
+    color: #6c757d;
+}
+
+#painelDeVendas [data-estado="carregando"] > .estado-carregando,
+#painelDeVendas [data-estado="carregando"] > .card-body > .estado-carregando {
+    display: flex;
+    background-color: rgba(255, 255, 255, 0.65);
+    border-radius: 0.375rem;
+}
+
+#painelDeVendas [data-estado="vazio"] > .card-body > .estado-vazio,
+#painelDeVendas [data-estado="erro"] > .estado-erro,
+#painelDeVendas [data-estado="erro"] > .card-body > .estado-erro {
+    display: flex;
+}
+
+#painelDeVendas [data-estado="erro"] .estado-erro {
+    color: #b02a37;
+    background-color: #fff;
+    border-radius: 0.375rem;
+}
+
+#painelDeVendas [data-estado="vazio"] > .card-body > .conteudo-do-bloco,
+#painelDeVendas [data-estado="erro"] > .card-body > .conteudo-do-bloco,
+#painelDeVendas [data-estado="erro"] > .conteudo-do-bloco {
+    visibility: hidden;
+}
+
+#painelDeVendas .area-do-grafico {
+    position: relative;
+    height: 280px;
+}
+
+#painelDeVendas .cartao-indicador .rotulo-indicador {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #6c757d;
+}
+
+#painelDeVendas .cartao-indicador .valor-indicador {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+#painelDeVendas .cartao-indicador .valor-indicador.valor-menor {
+    font-size: 1rem;
+    padding-top: 0.4rem;
+}
+
+#painelDeVendas .cartao-indicador .detalhe-indicador,
+#painelDeVendas .cartao-indicador .variacao-indicador {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+#painelDeVendas .variacao-indicador.variacao-alta {
+    color: #198754;
+}
+
+#painelDeVendas .variacao-indicador.variacao-baixa {
+    color: #b02a37;
+}
+
+#painelDeVendas .coluna-participacao {
+    width: 22%;
+    min-width: 110px;
+}
+
+#painelDeVendas #tabelaRanking td {
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 576px) {
+    #painelDeVendas .cartao-indicador .valor-indicador {
+        font-size: 1.25rem;
+    }
+
+    #painelDeVendas .area-do-grafico {
+        height: 240px;
+    }
+}

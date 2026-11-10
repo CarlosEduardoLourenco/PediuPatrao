@@ -28,6 +28,16 @@ class CalculadoraDePedidoTest {
     }
 
     @Test
+    void deveCopiarACategoriaDoProdutoParaOItem() {
+        Produto refrigerante = produto("p2", "Guaraná 2L", 12.0);
+        refrigerante.setTipo("Bebida");
+
+        ItemPedido item = CalculadoraDePedido.montarItem(refrigerante, 1);
+
+        assertEquals("Bebida", item.categoria());
+    }
+
+    @Test
     void deveSomarOsSubtotaisDosItens() {
         List<ItemPedido> itens = List.of(
                 CalculadoraDePedido.montarItem(produto("p1", "Pizza", 40.0), 2),

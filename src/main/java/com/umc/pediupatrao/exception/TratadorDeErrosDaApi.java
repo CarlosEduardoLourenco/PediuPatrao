@@ -3,12 +3,17 @@ package com.umc.pediupatrao.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice(annotations = RestController.class)
 public class TratadorDeErrosDaApi {
+
+    private static final String PREFIXO_PARAMETRO_INVALIDO = "Valor inválido para o parâmetro ";
 
     @ExceptionHandler(RegraNegocioException.class)
     public ResponseEntity<ErroResposta> regraNegocio(RegraNegocioException excecao) {
@@ -28,6 +33,18 @@ public class TratadorDeErrosDaApi {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErroResposta> corpoIlegivel(HttpMessageNotReadableException excecao) {
         return resposta(HttpStatus.BAD_REQUEST, "Corpo da requisição inválido");
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErroResposta> parametroComTipoErrado(MethodArgumentTypeMismatchException excecao) {
+        return resposta(HttpStatus.BAD_REQUEST, PREFIXO_PARAMETRO_INVALIDO + excecao.getName());
+    }
+
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<ErroResposta> parametrosNaoConvertidos(BindException excecao) {
+        FieldError primeiroErro = excecao.getFieldError();
+        String parametro = primeiroErro == null ? excecao.getObjectName() : primeiroErro.getField();
+        return resposta(HttpStatus.BAD_REQUEST, PREFIXO_PARAMETRO_INVALIDO + parametro);
     }
 
     private ResponseEntity<ErroResposta> resposta(HttpStatus status, String mensagem) {

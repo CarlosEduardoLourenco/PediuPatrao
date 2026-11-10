@@ -1,20 +1,329 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <title>Home</title>
 </head>
 <body>
 
-<div class="container-fluid vh-100 d-flex justify-content-center align-items-center" th:fragment="content">
-    <div class="text-center">
-        <h1>Bem-vindo!!!</h1>
-        <a href="/horarios" class="badge fs-6 text-decoration-none mb-3"
-           th:classappend="${situacao.aberto()} ? 'bg-success' : 'bg-secondary'"
-           th:text="${situacao.mensagem()}"></a>
-        <div>
-            <img th:src="@{/images/logo.png}" alt="Logo" width="500" height="500">
+<div th:fragment="content">
+
+    <div class="container-fluid vh-100 d-flex justify-content-center align-items-center"
+         sec:authorize="!hasRole('GERENTE')">
+        <div class="text-center">
+            <h1>Bem-vindo!!!</h1>
+            <a href="/horarios" class="badge fs-6 text-decoration-none mb-3"
+               th:classappend="${situacao.aberto()} ? 'bg-success' : 'bg-secondary'"
+               th:text="${situacao.mensagem()}"></a>
+            <div>
+                <img th:src="@{/images/logo.png}" alt="Logo" width="500" height="500">
+            </div>
         </div>
     </div>
+
+    <div id="painelDeVendas" class="pb-5" sec:authorize="hasRole('GERENTE')">
+        <link rel="stylesheet" th:href="@{/css/painel.css}">
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <div>
+                <h2 class="fw-bold mb-1"><i class="bi bi-speedometer2 me-2 text-primary"></i>Painel de vendas</h2>
+                <a href="/horarios" class="badge text-decoration-none"
+                   th:classappend="${situacao.aberto()} ? 'bg-success' : 'bg-secondary'"
+                   th:text="${situacao.mensagem()}"></a>
+                <span class="text-muted small ms-2" id="ultimaAtualizacao">Carregando…</span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="atualizacaoAutomatica" checked>
+                    <label class="form-check-label small" for="atualizacaoAutomatica">Atualizar a cada 60 s</label>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="botaoAtualizar">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
+                </button>
+            </div>
+        </div>
+
+        <form id="filtrosDoPainel" class="card shadow-sm mb-3" novalidate>
+            <div class="card-body row g-2 align-items-end">
+                <div class="col-12 col-md-4 col-xl-3">
+                    <label class="form-label small fw-medium mb-1" for="atalhoDePeriodo">Período</label>
+                    <select class="form-select form-select-sm" id="atalhoDePeriodo">
+                        <option value="hoje">Hoje</option>
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="30" selected>Últimos 30 dias</option>
+                        <option value="90">Últimos 90 dias</option>
+                        <option value="mes">Mês atual</option>
+                        <option value="personalizado">Personalizado</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-medium mb-1" for="filtroDe">De</label>
+                    <input type="date" class="form-control form-control-sm" id="filtroDe" required>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-medium mb-1" for="filtroAte">Até</label>
+                    <input type="date" class="form-control form-control-sm" id="filtroAte" required>
+                </div>
+                <div class="col-12 col-md-2">
+                    <label class="form-label small fw-medium mb-1" for="filtroTipoSaida">Saída</label>
+                    <select class="form-select form-select-sm" id="filtroTipoSaida">
+                        <option value="">Entrega e retirada</option>
+                        <option value="ENTREGA">Só entrega</option>
+                        <option value="RETIRADA">Só retirada</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-2 col-xl-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="bi bi-funnel me-1"></i>Aplicar
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="botaoLimparFiltros"
+                            title="Voltar aos últimos 30 dias">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <div class="col-12">
+                    <div id="avisoDosFiltros" class="alert alert-warning py-2 mb-0 mt-1 d-none" role="alert"></div>
+                </div>
+            </div>
+        </form>
+
+        <section class="bloco-do-painel mb-3" id="blocoIndicadores" data-estado="carregando"
+                 aria-label="Indicadores gerais">
+            <div class="estado-do-bloco estado-carregando"><div class="spinner-border text-primary"></div></div>
+            <div class="estado-do-bloco estado-erro">
+                <span class="mensagem-do-erro"></span>
+                <button type="button" class="btn btn-sm btn-outline-danger botao-repetir">Tentar novamente</button>
+            </div>
+            <div class="row g-3 conteudo-do-bloco">
+                <div class="col-6 col-lg-3">
+                    <div class="card shadow-sm h-100 cartao-indicador">
+                        <div class="card-body">
+                            <div class="rotulo-indicador"><i class="bi bi-cash-coin me-1"></i>Faturamento</div>
+                            <div class="valor-indicador" data-indicador="faturamento">—</div>
+                            <div class="variacao-indicador" data-variacao="variacaoDoFaturamento"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card shadow-sm h-100 cartao-indicador">
+                        <div class="card-body">
+                            <div class="rotulo-indicador"><i class="bi bi-bag-check me-1"></i>Pedidos finalizados</div>
+                            <div class="valor-indicador" data-indicador="pedidosFinalizados">—</div>
+                            <div class="variacao-indicador" data-variacao="variacaoDosPedidos"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card shadow-sm h-100 cartao-indicador">
+                        <div class="card-body">
+                            <div class="rotulo-indicador"><i class="bi bi-receipt me-1"></i>Ticket médio</div>
+                            <div class="valor-indicador" data-indicador="ticketMedio">—</div>
+                            <div class="variacao-indicador" data-variacao="variacaoDoTicketMedio"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card shadow-sm h-100 cartao-indicador">
+                        <div class="card-body">
+                            <div class="rotulo-indicador"><i class="bi bi-tags me-1"></i>Descontos concedidos</div>
+                            <div class="valor-indicador" data-indicador="descontosConcedidos">—</div>
+                            <div class="detalhe-indicador">Total abatido nos pedidos finalizados</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card shadow-sm h-100 cartao-indicador">
+                        <div class="card-body">
+                            <div class="rotulo-indicador"><i class="bi bi-x-octagon me-1"></i>Pedidos cancelados</div>
+                            <div class="valor-indicador" data-indicador="pedidosCancelados">—</div>
+                            <div class="detalhe-indicador" data-indicador="taxaDeCancelamento"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card shadow-sm h-100 cartao-indicador">
+                        <div class="card-body">
+                            <div class="rotulo-indicador"><i class="bi bi-fire me-1"></i>Tempo médio de preparo</div>
+                            <div class="valor-indicador" data-indicador="tempoMedioDePreparoEmMinutos">—</div>
+                            <div class="detalhe-indicador">Do início do preparo até ficar pronto</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card shadow-sm h-100 cartao-indicador">
+                        <div class="card-body">
+                            <div class="rotulo-indicador"><i class="bi bi-stopwatch me-1"></i>Tempo médio de atendimento</div>
+                            <div class="valor-indicador" data-indicador="tempoMedioDeAtendimentoEmMinutos">—</div>
+                            <div class="detalhe-indicador">Da entrada até a finalização</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="card shadow-sm h-100 cartao-indicador">
+                        <div class="card-body">
+                            <div class="rotulo-indicador"><i class="bi bi-calendar-range me-1"></i>Comparado com</div>
+                            <div class="valor-indicador valor-menor" data-indicador="periodoAnterior">—</div>
+                            <div class="detalhe-indicador" data-indicador="faturamentoAnterior"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="row g-3 mb-3">
+            <div class="col-12 col-xl-8">
+                <section class="card shadow-sm h-100 bloco-do-painel" id="blocoSerie" data-estado="carregando">
+                    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h6 class="mb-0 fw-semibold">Faturamento e pedidos no período</h6>
+                        <select class="form-select form-select-sm w-auto" id="granularidadeDaSerie"
+                                aria-label="Agrupar por">
+                            <option value="DIA">Por dia</option>
+                            <option value="SEMANA">Por semana</option>
+                            <option value="MES">Por mês</option>
+                        </select>
+                    </div>
+                    <div class="card-body">
+                        <div class="estado-do-bloco estado-carregando"><div class="spinner-border text-primary"></div></div>
+                        <div class="estado-do-bloco estado-vazio"><i class="bi bi-inbox me-2"></i>Nenhuma venda finalizada no período.</div>
+                        <div class="estado-do-bloco estado-erro">
+                            <span class="mensagem-do-erro"></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger botao-repetir">Tentar novamente</button>
+                        </div>
+                        <div class="conteudo-do-bloco area-do-grafico"><canvas id="graficoSerie"></canvas></div>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12 col-md-6 col-xl-4">
+                <section class="card shadow-sm h-100 bloco-do-painel" id="blocoStatus" data-estado="carregando">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0 fw-semibold">Pedidos do período por situação</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="estado-do-bloco estado-carregando"><div class="spinner-border text-primary"></div></div>
+                        <div class="estado-do-bloco estado-vazio"><i class="bi bi-inbox me-2"></i>Nenhum pedido no período.</div>
+                        <div class="estado-do-bloco estado-erro">
+                            <span class="mensagem-do-erro"></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger botao-repetir">Tentar novamente</button>
+                        </div>
+                        <div class="conteudo-do-bloco area-do-grafico"><canvas id="graficoStatus"></canvas></div>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12 col-md-6 col-xl-4 order-xl-last">
+                <section class="card shadow-sm h-100 bloco-do-painel" id="blocoEmAndamento" data-estado="carregando">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-semibold">Em andamento agora</h6>
+                        <span class="badge bg-primary rounded-pill" id="totalEmAndamento">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="estado-do-bloco estado-carregando"><div class="spinner-border text-primary"></div></div>
+                        <div class="estado-do-bloco estado-vazio"><i class="bi bi-check2-circle me-2"></i>Nenhum pedido em andamento.</div>
+                        <div class="estado-do-bloco estado-erro">
+                            <span class="mensagem-do-erro"></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger botao-repetir">Tentar novamente</button>
+                        </div>
+                        <div class="conteudo-do-bloco">
+                            <ul class="list-group list-group-flush" id="listaEmAndamento"></ul>
+                            <a href="/pedidos" class="btn btn-link btn-sm px-0 mt-2">Ver todos os pedidos</a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12 col-xl-8">
+                <section class="card shadow-sm h-100 bloco-do-painel" id="blocoRanking" data-estado="carregando">
+                    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h6 class="mb-0 fw-semibold">Produtos mais vendidos</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <select class="form-select form-select-sm w-auto" id="criterioDoRanking"
+                                    aria-label="Ordenar por">
+                                <option value="QUANTIDADE">Por quantidade</option>
+                                <option value="FATURAMENTO">Por faturamento</option>
+                            </select>
+                            <select class="form-select form-select-sm w-auto" id="categoriaDoRanking"
+                                    aria-label="Categoria">
+                                <option value="">Todas as categorias</option>
+                            </select>
+                            <select class="form-select form-select-sm w-auto" id="limiteDoRanking"
+                                    aria-label="Quantidade de produtos">
+                                <option value="5">Top 5</option>
+                                <option value="10" selected>Top 10</option>
+                                <option value="20">Top 20</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="estado-do-bloco estado-carregando"><div class="spinner-border text-primary"></div></div>
+                        <div class="estado-do-bloco estado-vazio"><i class="bi bi-inbox me-2"></i>Nenhum produto vendido com esses filtros.</div>
+                        <div class="estado-do-bloco estado-erro">
+                            <span class="mensagem-do-erro"></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger botao-repetir">Tentar novamente</button>
+                        </div>
+                        <div class="conteudo-do-bloco table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center">#</th>
+                                        <th>Produto</th>
+                                        <th class="d-none d-md-table-cell">Categoria</th>
+                                        <th class="text-end">Quantidade</th>
+                                        <th class="text-end">Faturamento</th>
+                                        <th class="coluna-participacao d-none d-md-table-cell">Em relação ao 1º</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabelaRanking"></tbody>
+                            </table>
+                            <div class="small text-muted mt-2">Faturamento dos itens antes do desconto do pedido.</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-12 col-xl-6">
+                <section class="card shadow-sm h-100 bloco-do-painel" id="blocoDistribuicao" data-estado="carregando">
+                    <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h6 class="mb-0 fw-semibold">Picos de movimento</h6>
+                        <select class="form-select form-select-sm w-auto" id="dimensaoDaDistribuicao"
+                                aria-label="Agrupar por">
+                            <option value="HORA">Por hora do dia</option>
+                            <option value="DIA_DA_SEMANA">Por dia da semana</option>
+                            <option value="TIPO_SAIDA">Por tipo de saída</option>
+                        </select>
+                    </div>
+                    <div class="card-body">
+                        <div class="estado-do-bloco estado-carregando"><div class="spinner-border text-primary"></div></div>
+                        <div class="estado-do-bloco estado-vazio"><i class="bi bi-inbox me-2"></i>Nenhuma venda finalizada no período.</div>
+                        <div class="estado-do-bloco estado-erro">
+                            <span class="mensagem-do-erro"></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger botao-repetir">Tentar novamente</button>
+                        </div>
+                        <div class="conteudo-do-bloco area-do-grafico"><canvas id="graficoDistribuicao"></canvas></div>
+                    </div>
+                </section>
+            </div>
+            <div class="col-12 col-xl-6">
+                <section class="card shadow-sm h-100 bloco-do-painel" id="blocoCancelamentos" data-estado="carregando">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-semibold">Cancelamentos por motivo</h6>
+                        <span class="badge bg-danger-subtle text-danger-emphasis" id="totalCancelamentos">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="estado-do-bloco estado-carregando"><div class="spinner-border text-primary"></div></div>
+                        <div class="estado-do-bloco estado-vazio"><i class="bi bi-emoji-smile me-2"></i>Nenhum cancelamento no período.</div>
+                        <div class="estado-do-bloco estado-erro">
+                            <span class="mensagem-do-erro"></span>
+                            <button type="button" class="btn btn-sm btn-outline-danger botao-repetir">Tentar novamente</button>
+                        </div>
+                        <div class="conteudo-do-bloco area-do-grafico"><canvas id="graficoCancelamentos"></canvas></div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <script th:src="@{/plugins/chart.js/Chart.min.js}"></script>
+        <script th:src="@{/js/painel.js}"></script>
+    </div>
+
 </div>
 
 </body>
