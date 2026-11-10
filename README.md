@@ -120,9 +120,95 @@ PainelController ──► PainelDeVendasService ──► AgregacoesDePedidos �
 | Contratos (entrada e saída) | `dto/painel/*` |
 | Dados de demonstração | `config/demonstracao/*` (só no modo `demo`) |
 
+### Modelo de dados
+
+O painel lê apenas a coleção `pedidos`. Cada pedido é um documento único que já guarda os itens, a saída, o cancelamento e o histórico de status, por isso todos os indicadores saem de agregações sobre essa coleção, sem junções com outras coleções.
+
+```json
+{
+  "_id": "6af2800f143de60725018e10",
+  "clienteId": "6af2800f143de60725018d20",
+  "clienteNome": "Mariana Souza",
+  "tipoSaida": "ENTREGA",
+  "status": "FINALIZADO",
+  "itens": [
+    {
+      "produtoId": "6af2800f143de60725018d06",
+      "nomeProduto": "Pizza Calabresa",
+      "categoria": "Pizza",
+      "precoUnitario": 45.00,
+      "quantidade": 2,
+      "subtotal": 90.00
+    }
+  ],
+  "subtotal": 90.00,
+  "descontoPercentual": 0,
+  "valorDesconto": 0,
+  "valorTotal": 90.00,
+  "dataHoraEntrada": "2026-10-17T19:42:00",
+  "usuarioEntrada": "atendente01",
+  "saida": {
+    "dataHora": "2026-10-17T20:15:00",
+    "usuario": "atendente01",
+    "entregadorId": "6af2800f143de60725018d40",
+    "entregadorNome": "Carlos Lima"
+  },
+  "cancelamento": null,
+  "historicoDeStatus": [
+    { "status": "RECEBIDO", "dataHora": "2026-10-17T19:42:00", "responsavel": "atendente01" },
+    { "status": "EM_PREPARACAO", "dataHora": "2026-10-17T19:45:00", "responsavel": "atendente01" },
+    { "status": "PRONTO", "dataHora": "2026-10-17T20:05:00", "responsavel": "atendente01" },
+    { "status": "SAIU_PARA_ENTREGA", "dataHora": "2026-10-17T20:15:00", "responsavel": "atendente01" },
+    { "status": "FINALIZADO", "dataHora": "2026-10-17T20:38:00", "responsavel": "atendente01" }
+  ]
+}
+```
+
+Campos acrescentados nesta atividade: `itens[].categoria` e `historicoDeStatus`. Valores em dinheiro são gravados como `Decimal128`, para não ter erro de arredondamento.
+
+| Campo | Usado em |
+|---|---|
+| `dataHoraEntrada` | Filtro de período de todos os endpoints, série temporal, picos por hora e dia da semana |
+| `status` | Venda = `FINALIZADO`; situação dos pedidos; em andamento agora |
+| `tipoSaida` | Filtro de tipo de saída e distribuição por tipo |
+| `valorTotal`, `valorDesconto` | Faturamento, ticket médio e descontos concedidos |
+| `itens` (`produtoId`, `nomeProduto`, `categoria`, `quantidade`, `subtotal`) | Ranking de produtos e filtro por categoria |
+| `cancelamento.motivo` | Cancelamentos por motivo e taxa de cancelamento |
+| `historicoDeStatus` | Tempo médio de preparo (`EM_PREPARACAO` → `PRONTO`) e de atendimento (entrada → `FINALIZADO`) |
+
+Índices criados para as consultas do painel:
+
+| Índice | Campos | Por quê |
+|---|---|---|
+| `status_por_entrada` | `status`, `dataHoraEntrada` | Quase toda consulta filtra por status e período ao mesmo tempo |
+| `entrada` | `dataHoraEntrada` | Situação dos pedidos, que filtra só pelo período, com todos os status |
+
 ### Documentação da API
 
 Base: `/api/painel`. Todos os endpoints são `GET`, respondem JSON e exigem login com o perfil **GERENTE** (sessão do navegador).
+
+#### Como chamar a API fora do navegador
+
+A API usa a mesma sessão do login por formulário. Para testar com `curl` ou Postman, primeiro faça login para obter o cookie de sessão. O login exige o token CSRF, que vem na própria página `/login`.
+
+Com `curl` (Git Bash ou Linux):
+
+```bash
+TOKEN=$(curl -s -c cookies.txt http://localhost:8080/login | grep -o 'name="_csrf" value="[^"]*"' | sed 's/.*value="//;s/"$//')
+curl -s -b cookies.txt -c cookies.txt -d "username=gerente01&password=zoro&_csrf=$TOKEN" http://localhost:8080/login
+curl -s -b cookies.txt "http://localhost:8080/api/painel/indicadores?de=2026-10-01&ate=2026-10-31"
+```
+
+Com PowerShell:
+
+```powershell
+$pagina = Invoke-WebRequest http://localhost:8080/login -SessionVariable sessao -UseBasicParsing
+$token = [regex]::Match($pagina.Content, 'name="_csrf" value="([^"]+)"').Groups[1].Value
+Invoke-WebRequest http://localhost:8080/login -Method Post -WebSession $sessao -UseBasicParsing -Body @{ username = 'gerente01'; password = 'zoro'; _csrf = $token } | Out-Null
+Invoke-RestMethod "http://localhost:8080/api/painel/indicadores?de=2026-10-01&ate=2026-10-31" -WebSession $sessao
+```
+
+Sem o login, a API responde `401`. Com o login de um ADMIN ou ATENDENTE, responde `403`.
 
 #### Parâmetros comuns
 
