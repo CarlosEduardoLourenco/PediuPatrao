@@ -23,7 +23,8 @@ public final class CalculadoraDePedido {
         BigDecimal precoUnitario = BigDecimal.valueOf(produto.getPreco())
                 .setScale(ESCALA_MONETARIA, ARREDONDAMENTO);
         BigDecimal subtotal = precoUnitario.multiply(BigDecimal.valueOf(quantidade));
-        return new ItemPedido(produto.getId(), produto.getNome(), precoUnitario, quantidade, subtotal);
+        return new ItemPedido(produto.getId(), produto.getNome(), produto.getTipo(), precoUnitario,
+                quantidade, subtotal);
     }
 
     public static BigDecimal somarSubtotais(List<ItemPedido> itens) {

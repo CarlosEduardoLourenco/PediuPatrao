@@ -71,15 +71,17 @@ public class PedidoService {
         exigirDadosDoPedido(requisicao);
         Cliente cliente = buscarCliente(requisicao.clienteId());
         List<ItemPedido> itens = requisicao.itens().stream().map(this::montarItem).toList();
+        LocalDateTime agora = LocalDateTime.now(relogio);
+        String responsavel = usuarioAutenticado.nome();
 
         Pedido pedido = new Pedido();
         pedido.setClienteId(cliente.getId());
         pedido.setClienteNome(cliente.getNome());
         pedido.setTipoSaida(requisicao.tipoSaida());
-        pedido.setStatus(StatusPedido.RECEBIDO);
+        pedido.passarPara(StatusPedido.RECEBIDO, agora, responsavel);
         definirValoresIniciais(pedido, itens);
-        pedido.setDataHoraEntrada(LocalDateTime.now(relogio));
-        pedido.setUsuarioEntrada(usuarioAutenticado.nome());
+        pedido.setDataHoraEntrada(agora);
+        pedido.setUsuarioEntrada(responsavel);
 
         Pedido salvo = pedidoRepository.save(pedido);
         pedidoAuditor.criacao(salvo);
@@ -92,21 +94,26 @@ public class PedidoService {
         StatusPedido statusAnterior = pedido.getStatus();
         StatusPedido proximo = proximoStatusValido(pedido);
         exigirDestinoCompativel(statusAnterior, proximo, requisicao.destino());
+        LocalDateTime agora = LocalDateTime.now(relogio);
+        String responsavel = usuarioAutenticado.nome();
 
-        RegistroDeSaida saida = proximo.registraSaida() ? registrarSaida(proximo, requisicao) : null;
+        RegistroDeSaida saida = proximo.registraSaida()
+                ? registrarSaida(proximo, requisicao, agora, responsavel)
+                : null;
 
-        pedido.setStatus(proximo);
+        pedido.passarPara(proximo, agora, responsavel);
         pedido.setSaida(saida != null ? saida : pedido.getSaida());
         Pedido salvo = pedidoRepository.save(pedido);
         pedidoAuditor.mudancaDeStatus(salvo, statusAnterior);
         return salvo;
     }
 
-    private RegistroDeSaida registrarSaida(StatusPedido destino, AvancoRequisicao requisicao) {
+    private RegistroDeSaida registrarSaida(StatusPedido destino, AvancoRequisicao requisicao,
+            LocalDateTime agora, String responsavel) {
         Entregador entregador = destino == StatusPedido.SAIU_PARA_ENTREGA
                 ? buscarEntregadorAtivo(requisicao.entregadorId())
                 : null;
-        return new RegistroDeSaida(LocalDateTime.now(relogio), usuarioAutenticado.nome(),
+        return new RegistroDeSaida(agora, responsavel,
                 entregador == null ? null : entregador.getId(),
                 entregador == null ? null : entregador.getNome());
     }
@@ -129,10 +136,12 @@ public class PedidoService {
         exigirPedidoAntesDaSaida(pedido, "O cancelamento");
         exigirMotivoValido(requisicao);
         StatusPedido statusAnterior = pedido.getStatus();
+        LocalDateTime agora = LocalDateTime.now(relogio);
+        String responsavel = usuarioAutenticado.nome();
 
-        pedido.setStatus(StatusPedido.CANCELADO);
+        pedido.passarPara(StatusPedido.CANCELADO, agora, responsavel);
         pedido.setCancelamento(new RegistroDeCancelamento(requisicao.motivo(), observacaoLimpa(requisicao),
-                usuarioAutenticado.nome(), LocalDateTime.now(relogio)));
+                responsavel, agora));
         Pedido salvo = pedidoRepository.save(pedido);
         pedidoAuditor.cancelamento(salvo, statusAnterior);
         return salvo;
